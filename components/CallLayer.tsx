@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { answerCall, declineCall, flipCamera, hangUp, toggleCam, toggleMic, useStore, type CallState } from "@/lib/store";
 import { formatDuration } from "@/lib/util";
 import { Icon, PlatformIcon, type IconName } from "./icons";
@@ -15,21 +15,97 @@ function useTicker(active: boolean) {
   return now;
 }
 
-function Media({ stream, muted, mirror, className }: { stream?: MediaStream; muted?: boolean; mirror?: boolean; className?: string }) {
+/** Video only — always muted. Remote sound goes through <RemoteAudio>. */
+function Media({ stream, mirror, className }: { stream?: MediaStream; mirror?: boolean; className?: string }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const [blocked, setBlocked] = useState(false);
   useEffect(() => {
     const v = ref.current;
     if (!v || !stream) return;
     v.srcObject = stream;
-    v.play().then(
-      () => setBlocked(false),
-      () => setBlocked(!muted),
-    );
-  }, [stream, muted]);
+    v.play().catch(() => {});
+  }, [stream]);
+  return <video ref={ref} autoPlay playsInline muted className={`${className ?? ""} ${mirror ? "-scale-x-100" : ""}`} />;
+}
+
+/** Loudspeaker gain. A compressor after it keeps peaks from clipping. */
+const SPEAKER_BOOST = 2.5;
+
+/** Best-effort output device for speaker/earpiece; undefined when the browser doesn't expose one. */
+async function findOutput(speaker: boolean): Promise<string | undefined> {
+  try {
+    const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audiooutput" && d.label);
+    const re = speaker ? /speaker/i : /earpiece|receiver|handset/i;
+    return outs.find((d) => re.test(d.label))?.deviceId;
+  } catch {
+    return undefined;
+  }
+}
+
+type SinkCapable = { setSinkId?: (id: string) => Promise<void> };
+
+/**
+ * Plays the remote audio on its own <audio> element. Sharing a <video> with a
+ * frameless video track (audio calls) stalls playback on Safari, so the call
+ * was silent. With `speaker` on, routes to the loudspeaker when the browser
+ * lets us pick outputs, and boosts volume through Web Audio.
+ */
+function RemoteAudio({ stream, speaker }: { stream?: MediaStream; speaker: boolean }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  const [blocked, setBlocked] = useState(false);
+  const audio = useMemo(() => (stream ? new MediaStream(stream.getAudioTracks()) : undefined), [stream]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !audio) return;
+    el.srcObject = audio;
+    const play = () => void el.play().then(() => setBlocked(false), () => setBlocked(true));
+    play();
+    // Remote tracks start muted until RTP flows; retry playback when they unmute.
+    const tracks = audio.getAudioTracks();
+    tracks.forEach((t) => t.addEventListener("unmute", play));
+    return () => tracks.forEach((t) => t.removeEventListener("unmute", play));
+  }, [audio]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !audio) return;
+    let cancelled = false;
+    let ctx: AudioContext | undefined;
+    void (async () => {
+      const sink = await findOutput(speaker);
+      if (cancelled) return;
+      await (el as SinkCapable).setSinkId?.(sink ?? "").catch(() => {});
+      if (!speaker || cancelled) return;
+      try {
+        ctx = new AudioContext();
+        if (sink) await (ctx as SinkCapable).setSinkId?.(sink).catch(() => {});
+        const gain = ctx.createGain();
+        gain.gain.value = SPEAKER_BOOST;
+        ctx.createMediaStreamSource(audio).connect(gain).connect(ctx.createDynamicsCompressor()).connect(ctx.destination);
+        // Mute the element only once the boosted path is actually playing, so
+        // a context stuck "suspended" (no user gesture yet) never means silence.
+        // The element must stay attached: Chrome feeds Web Audio nothing from a
+        // remote WebRTC stream that isn't also on a media element.
+        const sync = () => {
+          if (!cancelled && ctx) el.muted = ctx.state === "running";
+        };
+        ctx.onstatechange = sync;
+        sync();
+        void ctx.resume();
+      } catch {
+        el.muted = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+      el.muted = false;
+      void ctx?.close();
+    };
+  }, [audio, speaker]);
+
   return (
     <>
-      <video ref={ref} autoPlay playsInline muted={muted} className={`${className ?? ""} ${mirror ? "-scale-x-100" : ""}`} />
+      <audio ref={ref} autoPlay playsInline />
       {blocked && (
         <button
           className="btn btn-primary absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
@@ -51,6 +127,8 @@ export function CallLayer() {
 function CallView({ call }: { call: CallState }) {
   const peer = useStore((s) => s.peer);
   const [minimized, setMinimized] = useState(false);
+  // Like a phone: video calls start on speaker, audio calls on the earpiece.
+  const [speaker, setSpeaker] = useState(call.kind === "video");
   const now = useTicker(call.status === "active");
   const name = peer?.name ?? "Other device";
 
@@ -84,8 +162,9 @@ function CallView({ call }: { call: CallState }) {
           : "anim-pop fixed inset-0 z-50 overflow-hidden bg-[#05060c]"
       }
     >
-      {/* Remote: one element plays audio and (when on) video, and never unmounts during the call. */}
+      {/* Remote audio and video elements never unmount during the call. */}
       <div className={minimized ? "relative aspect-[3/4]" : "absolute inset-0"}>
+        <RemoteAudio stream={call.remote} speaker={speaker} />
         <Media stream={call.remote} className={`h-full w-full object-cover transition-opacity ${showRemoteVideo ? "opacity-100" : "opacity-0"}`} />
         {!showRemoteVideo && (
           <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_50%_35%,rgba(115,87,255,0.35),transparent_60%)]">
@@ -135,7 +214,7 @@ function CallView({ call }: { call: CallState }) {
           {/* Local preview */}
           {call.cam && call.local && (
             <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+4rem)] aspect-[3/4] w-28 overflow-hidden rounded-2xl border border-white/15 shadow-xl sm:w-40">
-              <Media stream={call.local} muted mirror={call.facing === "user"} className="h-full w-full object-cover" />
+              <Media stream={call.local} mirror={call.facing === "user"} className="h-full w-full object-cover" />
             </div>
           )}
 
@@ -143,6 +222,7 @@ function CallView({ call }: { call: CallState }) {
           <div className="safe-bottom absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent pt-16">
             <div className="mx-auto mb-6 flex max-w-sm items-center justify-center gap-4 px-6">
               <ControlButton icon={call.mic ? "mic" : "micOff"} label={call.mic ? "Mute" : "Unmute"} on={!call.mic} onClick={toggleMic} />
+              <ControlButton icon={speaker ? "speaker" : "speakerLow"} label="Speaker" on={speaker} onClick={() => setSpeaker((s) => !s)} />
               <ControlButton icon={call.cam ? "video" : "videoOff"} label={call.cam ? "Camera off" : "Camera on"} on={!call.cam} onClick={() => void toggleCam()} />
               {call.cam && <ControlButton icon="flip" label="Flip" onClick={() => void flipCamera()} />}
               <RoundButton icon="hangup" label="End" tone="danger" onClick={hangUp} compact />
