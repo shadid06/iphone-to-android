@@ -1,0 +1,10 @@
+{
+  "name": "Crossbeam — iPhone ⇄ Android transfer",
+  "short_name": "Crossbeam",
+  "description": "Send files, photos, videos, text and links and call between iPhone and Android over your Wi-Fi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07080f",
+  "theme_color": "#07080f",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

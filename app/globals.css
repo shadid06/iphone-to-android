@@ -1,26 +1,276 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f5f6fb;
+  --bg-2: #eceef7;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #ffffff;
+  --surface-2: rgba(15, 18, 40, 0.04);
+  --border: rgba(15, 18, 40, 0.08);
+  --text: #0e1124;
+  --muted: #5e6382;
+  --faint: #9aa0bd;
+  --accent: #6d4dff;
+  --accent-2: #12b5d6;
+  --accent-soft: rgba(109, 77, 255, 0.1);
+  --ok: #10b981;
+  --danger: #ef4444;
+  --bubble-me: linear-gradient(135deg, #6d4dff, #4f7bff);
+  --bubble-peer: #ffffff;
+  --shadow: 0 1px 2px rgba(14, 17, 36, 0.04), 0 8px 32px rgba(14, 17, 36, 0.08);
+  --glow-a: rgba(109, 77, 255, 0.22);
+  --glow-b: rgba(18, 181, 214, 0.18);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #07080f;
+    --bg-2: #0d0f1c;
+    --surface: rgba(22, 25, 44, 0.62);
+    --surface-solid: #141729;
+    --surface-2: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #eef0ff;
+    --muted: #9da3c7;
+    --faint: #5f6590;
+    --accent: #8b74ff;
+    --accent-2: #38d6f2;
+    --accent-soft: rgba(139, 116, 255, 0.14);
+    --bubble-me: linear-gradient(135deg, #7357ff, #4a6cff);
+    --bubble-peer: #171a2e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 40px rgba(0, 0, 0, 0.35);
+    --glow-a: rgba(115, 87, 255, 0.28);
+    --glow-b: rgba(56, 214, 242, 0.16);
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-surface: var(--surface);
+  --color-surface-solid: var(--surface-solid);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Soft aurora behind everything */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60vmax 50vmax at 10% -10%, var(--glow-a), transparent 60%),
+    radial-gradient(50vmax 40vmax at 110% 10%, var(--glow-b), transparent 60%),
+    radial-gradient(60vmax 50vmax at 50% 120%, var(--glow-a), transparent 65%);
+}
+
+@layer components {
+  .glass {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding: 0 1.25rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: transform 0.15s ease, opacity 0.15s ease, background 0.2s ease;
+    user-select: none;
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .btn-primary {
+    color: white;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 24px -8px var(--accent);
+  }
+  .btn-ghost {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover {
+    background: var(--accent-soft);
+  }
+
+  .icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    color: var(--text);
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+  .icon-btn:hover {
+    background: var(--surface-2);
+  }
+  .icon-btn:active {
+    transform: scale(0.92);
+  }
+
+  .text-gradient {
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* Motion */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes beam {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  30%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+@keyframes scanline {
+  0%,
+  100% {
+    top: 8%;
+  }
+  50% {
+    top: 88%;
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.anim-rise {
+  animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-pop {
+  animation: pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.beam {
+  animation: beam 1.8s ease-in-out infinite;
+}
+.pulse-ring {
+  animation: pulse-ring 1.8s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+.scanline {
+  animation: scanline 2.4s ease-in-out infinite;
+}
+.progress-active {
+  background-image: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent));
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+}
+
+/* Buy me a coffee floating button (brand yellow, readable in both themes) */
+.coffee-fab {
+  right: max(env(safe-area-inset-right), 1rem);
+  bottom: max(env(safe-area-inset-bottom), 1rem);
+  background: #ffdd00;
+  color: #0d0c22;
+  box-shadow: 0 10px 30px -8px rgb(255 190 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.15);
+}
+.coffee-fab:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }

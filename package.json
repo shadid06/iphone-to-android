@@ -1,21 +1,26 @@
 {
-  "name": "iphone-to-android",
+  "name": "crossbeam",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:lan": "node scripts/lan.mjs dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "serve:lan": "node scripts/lan.mjs serve",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "jsqr": "^1.4.0",
     "next": "16.3.8",
+    "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
