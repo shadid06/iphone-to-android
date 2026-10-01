@@ -8,6 +8,8 @@
 
 Send photos, videos, audio, files, text and links between an iPhone and an Android phone, and make audio or video calls between them, straight from the browser.
 
+**[Try it live → iphone-to-android.vercel.app](https://iphone-to-android.vercel.app/)**
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![WebRTC](https://img.shields.io/badge/WebRTC-peer--to--peer-333?logo=webrtc)](https://webrtc.org)
@@ -61,8 +63,8 @@ scripts/lan.mjs HTTPS dev/serve helper for testing on phones over the LAN
 Phones need **HTTPS** to use the camera (QR scanning and calls), so use the LAN script below rather than plain `npm run dev`.
 
 ```bash
-git clone https://github.com/shadid06/crossbeam.git
-cd crossbeam
+git clone https://github.com/shadid06/iphone-to-android.git
+cd iphone-to-android
 npm install
 npm run dev:lan        # HTTPS dev server on your LAN; prints the URL and a terminal QR
 ```
@@ -79,7 +81,7 @@ npm run serve:lan      # serve ./out over HTTPS on the LAN (reuses the dev certi
 
 ### Deploy
 
-**Vercel:** import the repo and keep the defaults. `output: "export"` makes it a static site and Vercel supplies HTTPS, so no certificate warnings on the phones.
+**Vercel:** the live app runs at [iphone-to-android.vercel.app](https://iphone-to-android.vercel.app/). To deploy your own, import the repo and keep the defaults. `output: "export"` makes it a static site and Vercel supplies HTTPS, so no certificate warnings on the phones.
 
 Any static HTTPS host works too (Netlify, GitHub Pages, Cloudflare Pages): upload `out/`. The page loads from the internet, but transfers and calls still go device to device over the local Wi-Fi.
 
